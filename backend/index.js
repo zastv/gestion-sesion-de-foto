@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 4000;
 
 // PostgreSQL connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_vDjF8X4Balue@ep-mute-firefly-a8z6kks6-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require',
   ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
@@ -105,3 +105,14 @@ app.listen(PORT, () => {
   console.error('Failed to start server:', error);
   process.exit(1);
 });
+
+// User table creation (to be run once)
+// CREATE TABLE "User" (
+//   id SERIAL PRIMARY KEY,
+//   email TEXT UNIQUE NOT NULL,
+//   password TEXT NOT NULL,
+//   name TEXT NOT NULL,
+//   phone TEXT,
+//   provider TEXT NOT NULL DEFAULT 'local',
+//   createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+// );
