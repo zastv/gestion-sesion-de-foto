@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  provider  String   @default("local") // local, google, facebook
+  createdAt DateTime @default(now())
+  clients   Client[]
+  images    GalleryImage[]
+}
+
+model Client {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  sessionType String
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  sessions  Session[]
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  hour      String
+  status    String   @default("pending") // pending, confirmed, cancelled
+  notes     String?
+  clientId  Int
+  client    Client   @relation(fields: [clientId], references: [id])
+  packageId Int?
+  package   Package? @relation(fields: [packageId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Package {
+  id          Int      @id @default(autoincrement())
+  name        String
+  price       Float
+  description String
+  category    String
+  examples    String[] // URLs de imágenes de ejemplo
+  sessions    Session[]
+}
+
+model GalleryImage {
+  id        Int      @id @default(autoincrement())
+  url       String
+  category  String
+  uploadedAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+}
