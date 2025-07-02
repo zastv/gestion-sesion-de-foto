@@ -2,22 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
+const { Pool } = require('pg');
 require('dotenv').config();
 
 const app = express();
-const prisma = new PrismaClient();
 const PORT = process.env.PORT || 4000;
 
-// Error handling for Prisma connection
-prisma.$connect()
-  .then(() => {
-    console.log('Successfully connected to the database');
-  })
-  .catch((error) => {
-    console.error('Failed to connect to the database:', error);
-    process.exit(1);
-  });
+// PostgreSQL connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false
+});
 
 app.use(cors());
 app.use(express.json());
@@ -32,7 +27,8 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: 'Email y contraseña son requeridos' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const userResult = await pool.query('SELECT * FROM "User" WHERE email = $1', [email]);
+    const user = userResult.rows[0];
     
     if (!user) {
       console.log('User not found:', email);
@@ -69,20 +65,18 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Todos los campos son requeridos' });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
+    const existingUser = await pool.query('SELECT * FROM "User" WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
       console.log('Email already registered:', email);
       return res.status(400).json({ error: 'El correo ya está registrado' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-      },
-    });
+    const insertResult = await pool.query(
+      'INSERT INTO "User" (name, email, password) VALUES ($1, $2, $3) RETURNING id, email, name',
+      [name, email, hashedPassword]
+    );
+    const user = insertResult.rows[0];
 
     const token = jwt.sign(
       { userId: user.id, email: user.email },
@@ -91,7 +85,7 @@ app.post('/api/register', async (req, res) => {
     );
 
     console.log('Successfully registered user:', email);
-    res.status(201).json({ token, user: { id: user.id, email: user.email, name: user.name } });
+    res.status(201).json({ token, user });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Error en el servidor: ' + error.message });
@@ -110,4 +104,4 @@ app.listen(PORT, () => {
 }).on('error', (error) => {
   console.error('Failed to start server:', error);
   process.exit(1);
-}); 
+});
