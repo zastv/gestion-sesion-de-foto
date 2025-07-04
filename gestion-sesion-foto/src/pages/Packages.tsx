@@ -1,11 +1,11 @@
 import Navbar from "../components/Navbar";
-import Gallery from "../components/Gallery";
+import Packages from "../components/Packages";
 
 export default function PackagesPage() {
   return (
     <>
       <Navbar />
-      <Gallery />
+      <Packages />
     </>
   );
-} 
+}

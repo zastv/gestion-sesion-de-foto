@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Navbar from "../components/Navbar";
 import SessionManager from "../components/SessionManager";
 import CalendarView from "../components/CalendarView";
@@ -9,6 +10,10 @@ import imgClientes from '../assets/31450.jpg';
 import imgCalidad from '../assets/IMG_8213.jpg';
 
 export default function Dashboard() {
+  const [reloadFlag, setReloadFlag] = useState(0);
+  const handleSessionCreated = () => {
+    setReloadFlag(f => f + 1);
+  };
   return (
     <>
       <Navbar />
@@ -59,11 +64,11 @@ export default function Dashboard() {
         </section>
         {/* Componentes funcionales debajo */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
-          <NewSessionForm />
+          <NewSessionForm onSessionCreated={handleSessionCreated} />
           <SessionManager />
-          <CalendarView />
+          <CalendarView reloadFlag={reloadFlag} />
         </div>
       </div>
     </>
   );
-} 
+}
