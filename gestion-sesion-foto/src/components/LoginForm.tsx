@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../config";
 import "./LoginForm.css";
 
 export default function LoginForm() {
@@ -14,7 +15,7 @@ export default function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/api/login", {
+      const res = await fetch(`${API_BASE_URL}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -57,4 +58,4 @@ export default function LoginForm() {
       </button>
     </form>
   );
-} 
+}
