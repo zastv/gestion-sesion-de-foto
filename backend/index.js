@@ -234,6 +234,80 @@ app.post('/api/custom-package', authenticateJWT, async (req, res) => {
   }
 });
 
+// CRUD ENDPOINTS PARA PAQUETES
+
+// Obtener todos los paquetes (público)
+app.get('/api/packages', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM "Package" ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get packages error:', error);
+    res.status(500).json({ error: 'Error en el servidor: ' + error.message });
+  }
+});
+
+// Crear nuevo paquete (requiere autenticación de admin)
+app.post('/api/packages', authenticateJWT, async (req, res) => {
+  try {
+    const { name, price, description, duration_minutes, photo_count, location_count, is_active } = req.body;
+    
+    if (!name || !price || !description) {
+      return res.status(400).json({ error: 'Nombre, precio y descripción son requeridos' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO "Package" (name, price, description, duration_minutes, photo_count, location_count, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [name, price, description, duration_minutes || 60, photo_count || 10, location_count || 1, is_active !== false]
+    );
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Create package error:', error);
+    res.status(500).json({ error: 'Error en el servidor: ' + error.message });
+  }
+});
+
+// Actualizar paquete (requiere autenticación de admin)
+app.put('/api/packages/:id', authenticateJWT, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, price, description, duration_minutes, photo_count, location_count, is_active } = req.body;
+    
+    const result = await pool.query(
+      'UPDATE "Package" SET name = $1, price = $2, description = $3, duration_minutes = $4, photo_count = $5, location_count = $6, is_active = $7, updated_at = NOW() WHERE id = $8 RETURNING *',
+      [name, price, description, duration_minutes, photo_count, location_count, is_active, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Paquete no encontrado' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Update package error:', error);
+    res.status(500).json({ error: 'Error en el servidor: ' + error.message });
+  }
+});
+
+// Eliminar paquete (requiere autenticación de admin)
+app.delete('/api/packages/:id', authenticateJWT, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query('DELETE FROM "Package" WHERE id = $1 RETURNING *', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Paquete no encontrado' });
+    }
+    
+    res.json({ message: 'Paquete eliminado exitosamente', package: result.rows[0] });
+  } catch (error) {
+    console.error('Delete package error:', error);
+    res.status(500).json({ error: 'Error en el servidor: ' + error.message });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
@@ -257,4 +331,18 @@ app.listen(PORT, () => {
 //   phone TEXT,
 //   provider TEXT NOT NULL DEFAULT 'local',
 //   createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+// );
+
+// Package table creation (to be run once)
+// CREATE TABLE "Package" (
+//   id SERIAL PRIMARY KEY,
+//   name VARCHAR(100) NOT NULL,
+//   price VARCHAR(50) NOT NULL,
+//   description TEXT NOT NULL,
+//   duration_minutes INTEGER DEFAULT 60,
+//   photo_count INTEGER DEFAULT 10,
+//   location_count INTEGER DEFAULT 1,
+//   is_active BOOLEAN DEFAULT true,
+//   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+//   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 // );

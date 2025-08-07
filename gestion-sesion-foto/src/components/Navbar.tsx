@@ -9,6 +9,7 @@ export default function Navbar() {
         <li><Link to="/dashboard">Sesiones</Link></li>
         <li><Link to="/gallery">Galería</Link></li>
         <li><Link to="/packages">Paquetes</Link></li>
+        <li><Link to="/admin/packages">Admin Paquetes</Link></li>
         <li><Link to="/login">Iniciar sesión</Link></li>
         <li><Link to="/register">Registrarse</Link></li>
         <li><Link to="/change-password">Cambiar contraseña</Link></li>

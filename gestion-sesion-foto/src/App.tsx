@@ -6,6 +6,7 @@ import GalleryPage from "./pages/Gallery";
 import PackagesPage from "./pages/Packages";
 import ForgotPasswordPage from "./pages/ForgotPassword";
 import ChangePasswordPage from "./pages/ChangePassword";
+import PackageAdmin from "./components/PackageAdmin";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/packages" element={<PackagesPage />} />
+        <Route path="/admin/packages" element={<PackageAdmin />} />
       </Routes>
     </BrowserRouter>
   );

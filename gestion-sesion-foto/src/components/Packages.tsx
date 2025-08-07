@@ -1,36 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { API_BASE_URL_CORRECTED as API_BASE_URL } from "../config";
 import "./Packages.css";
 
-const packages = [
-  {
-    name: "Pesonal",
-    price: "$50",
-    description: "Sesión de 30 minutos, 10 fotos editadas, 1 locación."
-  },
-  {
-    name: "Premium",
-    price: "$45",
-    description: "Sesión de 1 hora, 30 fotos editadas, 2 locaciones, 1 álbum digital."
-  },
-  {
-    name: "Personalizado",
-    price: "De 50$ en adelante",
-    description: "Usted elige el tipo de sesión, el tiempo, el número de fotos y el número de locaciones."
-  },
-  {
-    name: "Promoción Verano",
-    price: "$78",
-    description: "Sesion especial"
-  }
-];
+interface Package {
+  id: number;
+  name: string;
+  price: string;
+  description: string;
+  duration_minutes: number;
+  photo_count: number;
+  location_count: number;
+  is_active: boolean;
+}
 
 export default function Packages() {
+  const [packages, setPackages] = useState<Package[]>([]);
   const [showCustom, setShowCustom] = useState(false);
   const [custom, setCustom] = useState({ tipo: "", tiempo: "", fotos: "", locaciones: "" });
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingPackages, setLoadingPackages] = useState(true);
+
+  // Cargar paquetes desde la base de datos
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/packages`);
+        if (!res.ok) throw new Error('Error al cargar paquetes');
+        const data = await res.json();
+        setPackages(data.filter((pkg: Package) => pkg.is_active));
+      } catch (err: any) {
+        setError('Error al cargar paquetes: ' + err.message);
+      } finally {
+        setLoadingPackages(false);
+      }
+    };
+    
+    fetchPackages();
+  }, []);
 
   const handleCustomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,22 +75,37 @@ export default function Packages() {
   return (
     <div className="packages-container">
       <h2 className="packages-title">Paquetes y Promociones</h2>
-      <div className="packages-list">
-        {packages.map((pkg) => (
-          <div className="package-card" key={pkg.name}>
-            <h3>{pkg.name}</h3>
-            <div className="package-price">{pkg.price}</div>
-            <div className="package-desc">{pkg.description}</div>
-            {pkg.name === "Personalizado" ? (
-              <button className="package-select" onClick={() => setShowCustom(v => !v)}>
-                Personalizar
-              </button>
-            ) : (
-              <button className="package-select">Seleccionar</button>
-            )}
-          </div>
-        ))}
-      </div>
+      
+      {loadingPackages ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <p>Cargando paquetes...</p>
+        </div>
+      ) : (
+        <div className="packages-list">
+          {packages.map((pkg) => (
+            <div className="package-card" key={pkg.id}>
+              <h3>{pkg.name}</h3>
+              <div className="package-price">{pkg.price}</div>
+              <div className="package-desc">{pkg.description}</div>
+              <div className="package-details">
+                <small>
+                  {pkg.duration_minutes} min • {pkg.photo_count} fotos • {pkg.location_count} locación(es)
+                </small>
+              </div>
+              {pkg.name === "Personalizado" ? (
+                <button className="package-select" onClick={() => setShowCustom(v => !v)}>
+                  Personalizar
+                </button>
+              ) : (
+                <button className="package-select">Seleccionar</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {error && <div style={{ color: '#dc2626', textAlign: 'center', margin: '20px 0' }}>{error}</div>}
+      
       {showCustom && (
         <form className="custom-form" onSubmit={handleCustomSubmit} style={{ marginTop: 24, background: "#f9fafb", padding: 24, borderRadius: 12, boxShadow: "0 2px 8px #0001", maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
           <h4>Personaliza tu sesión</h4>
