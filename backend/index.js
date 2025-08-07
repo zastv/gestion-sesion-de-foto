@@ -19,7 +19,9 @@ app.use(cors({
     'http://localhost:5173', 
     'http://localhost:5174', 
     'http://localhost:3000',
-    'https://orange-space-giggle-vx5v6qg5jgwcwxj5-5173.app.github.dev'
+    'https://orange-space-giggle-vx5v6qg5jgwcwxj5-5173.app.github.dev',
+    /^https:\/\/.*\.vercel\.app$/,
+    /^https:\/\/.*\.netlify\.app$/
   ],
   credentials: true
 }));
