@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./Gallery.css";
+import { API_BASE_URL_CORRECTED as API_BASE_URL } from "../config";
 
 import img1 from "../assets/IMG_8771.jpg";
 import img2 from "../assets/IMG_8664.jpg";
@@ -27,10 +28,79 @@ const images = [
 
 export default function Gallery() {
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [userSessions, setUserSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    // Verificar si el usuario está autenticado
+    try {
+      const userData = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
+      if (userData && token) {
+        setUser(JSON.parse(userData));
+        fetchUserSessions(token);
+      } else {
+        setLoading(false);
+      }
+    } catch {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchUserSessions = async (token: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/user-sessions`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const sessions = await response.json();
+        setUserSessions(sessions);
+      }
+    } catch (error) {
+      console.error("Error fetching user sessions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="gallery-container" style={{ textAlign: 'center', padding: '2rem' }}>
+        <div className="spinner"></div>
+        <p>Cargando galería...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="gallery-container" style={{ textAlign: 'center', padding: '2rem' }}>
+        <h2>Acceso Restringido</h2>
+        <p>Debes iniciar sesión para ver la galería de fotos.</p>
+        <a href="/login" className="btn btn-primary">Iniciar Sesión</a>
+      </div>
+    );
+  }
+
+  if (userSessions.length === 0) {
+    return (
+      <div className="gallery-container" style={{ textAlign: 'center', padding: '2rem' }}>
+        <h2>Sin Sesiones</h2>
+        <p>Aún no tienes sesiones de fotografía. ¡Reserva tu primera sesión!</p>
+        <a href="/packages" className="btn btn-primary">Ver Paquetes</a>
+      </div>
+    );
+  }
 
   return (
     <div className="gallery-container">
-      <h2 className="gallery-title">Galería de Fotos</h2>
+      <h2 className="gallery-title">Mi Galería de Fotos</h2>
+      <p style={{ textAlign: 'center', marginBottom: '2rem', color: 'var(--gray-600)' }}>
+        Fotos de tus {userSessions.length} sesión{userSessions.length !== 1 ? 'es' : ''} de fotografía
+      </p>
       <div className="gallery-grid">
         {images.map((img, idx) => (
           <img
@@ -49,4 +119,4 @@ export default function Gallery() {
       )}
     </div>
   );
-} 
+}
