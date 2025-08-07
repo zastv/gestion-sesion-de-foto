@@ -1,8 +1,8 @@
--- Script SQL para agregar tablas de pagos a Supabase
+-- Script SQL para agregar tablas de pagos - Compatible con autenticación JWT
 -- Ejecutar después de las tablas existentes
 
 -- 1. Crear tabla de pagos
-CREATE TABLE "Payment" (
+CREATE TABLE IF NOT EXISTS "Payment" (
   id SERIAL PRIMARY KEY,
   sessionId INTEGER REFERENCES "Session"(id) ON DELETE CASCADE,
   userId INTEGER REFERENCES "User"(id) ON DELETE CASCADE,
@@ -29,12 +29,12 @@ CREATE TABLE "Payment" (
 );
 
 -- 2. Crear tabla de facturas
-CREATE TABLE "Invoice" (
+CREATE TABLE IF NOT EXISTS "Invoice" (
   id SERIAL PRIMARY KEY,
   paymentId INTEGER REFERENCES "Payment"(id) ON DELETE CASCADE,
   
   -- Numeración de facturas
-  invoice_number VARCHAR(50) UNIQUE NOT NULL,
+  invoice_number VARCHAR(50) UNIQUE,
   
   -- Detalles de facturación
   subtotal DECIMAL(10,2) NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE "Invoice" (
 );
 
 -- 3. Crear tabla de cupones/descuentos
-CREATE TABLE "Coupon" (
+CREATE TABLE IF NOT EXISTS "Coupon" (
   id SERIAL PRIMARY KEY,
   code VARCHAR(50) UNIQUE NOT NULL,
   
@@ -81,7 +81,7 @@ CREATE TABLE "Coupon" (
 );
 
 -- 4. Crear tabla de aplicación de cupones
-CREATE TABLE "PaymentCoupon" (
+CREATE TABLE IF NOT EXISTS "PaymentCoupon" (
   id SERIAL PRIMARY KEY,
   paymentId INTEGER REFERENCES "Payment"(id) ON DELETE CASCADE,
   couponId INTEGER REFERENCES "Coupon"(id) ON DELETE CASCADE,
@@ -90,7 +90,7 @@ CREATE TABLE "PaymentCoupon" (
 );
 
 -- 5. Crear tabla de transacciones (log detallado)
-CREATE TABLE "Transaction" (
+CREATE TABLE IF NOT EXISTS "Transaction" (
   id SERIAL PRIMARY KEY,
   paymentId INTEGER REFERENCES "Payment"(id) ON DELETE CASCADE,
   
@@ -110,83 +110,22 @@ CREATE TABLE "Transaction" (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. Configurar Row Level Security
-ALTER TABLE "Payment" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Invoice" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Coupon" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "PaymentCoupon" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Transaction" ENABLE ROW LEVEL SECURITY;
-
--- 7. Políticas básicas de seguridad
-
--- Política para ver pagos propios (usando email como identificador)
-CREATE POLICY "Users can view their own payments" ON "Payment"
-  FOR SELECT USING (
-    userId IN (
-      SELECT id FROM "User" 
-      WHERE email = auth.jwt() ->> 'email'
-    )
-  );
-
--- Política para ver facturas propias
-CREATE POLICY "Users can view their own invoices" ON "Invoice"
-  FOR SELECT USING (
-    paymentId IN (
-      SELECT p.id FROM "Payment" p
-      JOIN "User" u ON p.userId = u.id
-      WHERE u.email = auth.jwt() ->> 'email'
-    )
-  );
-
--- Política para crear pagos (usuarios autenticados)
-CREATE POLICY "Users can create their own payments" ON "Payment"
-  FOR INSERT WITH CHECK (
-    userId IN (
-      SELECT id FROM "User" 
-      WHERE email = auth.jwt() ->> 'email'
-    )
-  );
-
--- Política para actualizar pagos propios (webhooks y confirmaciones)
-CREATE POLICY "Users can update their own payments" ON "Payment"
-  FOR UPDATE USING (
-    userId IN (
-      SELECT id FROM "User" 
-      WHERE email = auth.jwt() ->> 'email'
-    )
-  );
-
--- Política para cupones (lectura pública para validación)
-CREATE POLICY "Coupons are publicly readable" ON "Coupon"
-  FOR SELECT USING (is_active = true);
-
--- Política para aplicación de cupones
-CREATE POLICY "Users can view their coupon usage" ON "PaymentCoupon"
-  FOR SELECT USING (
-    paymentId IN (
-      SELECT p.id FROM "Payment" p
-      JOIN "User" u ON p.userId = u.id
-      WHERE u.email = auth.jwt() ->> 'email'
-    )
-  );
-
--- Política para transacciones propias
-CREATE POLICY "Users can view their own transactions" ON "Transaction"
-  FOR SELECT USING (
-    paymentId IN (
-      SELECT p.id FROM "Payment" p
-      JOIN "User" u ON p.userId = u.id
-      WHERE u.email = auth.jwt() ->> 'email'
-    )
-  );
-
--- 8. Insertar cupones de ejemplo
+-- 6. Insertar cupones de ejemplo (solo si no existen)
 INSERT INTO "Coupon" (code, type, value, usage_limit, valid_until, description) VALUES
 ('PRIMERASESION', 'percentage', 15.00, 100, '2025-12-31 23:59:59', 'Descuento del 15% para primera sesión'),
 ('VERANO2025', 'fixed_amount', 50.00, 50, '2025-09-30 23:59:59', 'Descuento fijo de $50 para sesiones de verano'),
-('FAMILIAR20', 'percentage', 20.00, 25, '2025-12-31 23:59:59', '20% de descuento en sesiones familiares');
+('FAMILIAR20', 'percentage', 20.00, 25, '2025-12-31 23:59:59', '20% de descuento en sesiones familiares')
+ON CONFLICT (code) DO NOTHING;
 
--- 9. Función para generar número de factura automático
+-- 7. Crear índices para mejorar rendimiento
+CREATE INDEX IF NOT EXISTS idx_payment_user ON "Payment"(userId);
+CREATE INDEX IF NOT EXISTS idx_payment_session ON "Payment"(sessionId);
+CREATE INDEX IF NOT EXISTS idx_payment_status ON "Payment"(status);
+CREATE INDEX IF NOT EXISTS idx_payment_intent ON "Payment"(payment_intent_id);
+CREATE INDEX IF NOT EXISTS idx_coupon_code ON "Coupon"(code);
+CREATE INDEX IF NOT EXISTS idx_coupon_active ON "Coupon"(is_active);
+
+-- 8. Crear función para generar número de factura automático
 CREATE OR REPLACE FUNCTION generate_invoice_number()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -211,12 +150,35 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 10. Trigger para auto-generar números de factura
+-- 9. Crear trigger para auto-generar números de factura
+DROP TRIGGER IF EXISTS trigger_generate_invoice_number ON "Invoice";
 CREATE TRIGGER trigger_generate_invoice_number
   BEFORE INSERT ON "Invoice"
   FOR EACH ROW
   WHEN (NEW.invoice_number IS NULL)
   EXECUTE FUNCTION generate_invoice_number();
 
+-- 10. Agregar columna package_id a Session si no existe (para vinculación con paquetes)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'Session' AND column_name = 'package_id') THEN
+    ALTER TABLE "Session" ADD COLUMN package_id INTEGER REFERENCES "Package"(id);
+  END IF;
+END $$;
+
 -- Mensaje de confirmación
 SELECT 'Sistema de pagos configurado exitosamente! 💳✅' as mensaje;
+
+-- Mostrar estadísticas de las tablas creadas
+SELECT 
+  'Tabla Payment: ' || COUNT(*) || ' registros' as estadistica
+FROM "Payment"
+UNION ALL
+SELECT 
+  'Tabla Coupon: ' || COUNT(*) || ' cupones activos' as estadistica
+FROM "Coupon" WHERE is_active = true
+UNION ALL
+SELECT 
+  'Tabla Invoice: ' || COUNT(*) || ' facturas' as estadistica
+FROM "Invoice";

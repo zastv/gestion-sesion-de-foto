@@ -276,16 +276,30 @@ app.get('/api/calendar-events', authenticateJWT, async (req, res) => {
   }
 });
 
-// Endpoint para obtener las sesiones del usuario
-app.get('/api/my-sessions', authenticateJWT, async (req, res) => {
+// Endpoint para obtener las sesiones del usuario con información de pagos
+app.get('/api/user-sessions', authenticateJWT, async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM "Session" WHERE userId = $1 ORDER BY date DESC',
-      [req.user.userId]
-    );
+    const result = await dbQuery(`
+      SELECT 
+        s.*,
+        p.name as package_name,
+        p.price as package_price,
+        CASE 
+          WHEN pay.status = 'completed' THEN true
+          ELSE false
+        END as paid,
+        pay.status as payment_status,
+        pay.amount as payment_amount
+      FROM "Session" s
+      LEFT JOIN "Package" p ON s.package_id = p.id
+      LEFT JOIN "Payment" pay ON pay.sessionId = s.id AND pay.status IN ('completed', 'pending')
+      WHERE s.userId = $1
+      ORDER BY s.date DESC
+    `, [req.user.userId]);
+
     res.json(result.rows);
   } catch (error) {
-    console.error('Get my sessions error:', error);
+    console.error('Error fetching user sessions:', error);
     res.status(500).json({ error: 'Error en el servidor: ' + error.message });
   }
 });
@@ -620,17 +634,21 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
 });
 
 // Obtener pagos del usuario
-app.get('/api/my-payments', authenticateJWT, async (req, res) => {
+app.get('/api/user-payments', authenticateJWT, async (req, res) => {
   try {
     const result = await dbQuery(`
       SELECT 
         p.*,
         s.title as session_title,
         s.date as session_date,
+        pc.couponId,
+        c.code as coupon_used,
         i.invoice_number,
         i.pdf_url
       FROM "Payment" p
       LEFT JOIN "Session" s ON p.sessionId = s.id
+      LEFT JOIN "PaymentCoupon" pc ON pc.paymentId = p.id
+      LEFT JOIN "Coupon" c ON c.id = pc.couponId
       LEFT JOIN "Invoice" i ON i.paymentId = p.id
       WHERE p.userId = $1
       ORDER BY p.created_at DESC
