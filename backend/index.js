@@ -3,16 +3,40 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
+const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// PostgreSQL connection
+// PostgreSQL connection (Neon - fallback)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://usuario:contraseña@localhost:5432/tu_basededatos',
   ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
+
+// Configuración de Supabase
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+let supabase = null;
+
+if (supabaseUrl && supabaseServiceKey && process.env.USE_SUPABASE === 'true') {
+  supabase = createClient(supabaseUrl, supabaseServiceKey);
+  console.log('🚀 Usando Supabase como base de datos');
+} else {
+  console.log('🐘 Usando PostgreSQL directo (Neon)');
+}
+
+// Función adaptadora para queries
+const dbQuery = async (sql, params = []) => {
+  if (supabase && process.env.USE_SUPABASE === 'true') {
+    console.log('📊 Query via Supabase');
+    // Por ahora mantenemos PostgreSQL hasta migración completa
+    return await pool.query(sql, params);
+  } else {
+    return await pool.query(sql, params);
+  }
+};
 
 app.use(cors({
   origin: [
