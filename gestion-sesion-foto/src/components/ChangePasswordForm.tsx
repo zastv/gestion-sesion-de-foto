@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_BASE_URL } from "../config";
 
 export default function ChangePasswordForm({ onSuccess }: { onSuccess?: () => void }) {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -14,7 +15,7 @@ export default function ChangePasswordForm({ onSuccess }: { onSuccess?: () => vo
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:4000/api/change-password", {
+      const res = await fetch(`${API_BASE_URL}/api/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

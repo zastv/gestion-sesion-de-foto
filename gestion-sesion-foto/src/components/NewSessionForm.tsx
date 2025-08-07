@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_BASE_URL } from "../config";
 import "./NewSessionForm.css";
 
 export default function NewSessionForm({ onSessionCreated }: { onSessionCreated?: () => void }) {
@@ -26,7 +27,7 @@ export default function NewSessionForm({ onSessionCreated }: { onSessionCreated?
     }
     try {
       const dateTime = date && time ? `${date}T${time}:00` : "";
-      const res = await fetch("http://localhost:4000/api/sessions", {
+      const res = await fetch(`${API_BASE_URL}/api/sessions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

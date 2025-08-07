@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../config";
 import "./CalendarView.css";
 
 const hours = [
@@ -16,7 +17,7 @@ export default function CalendarView({ reloadFlag }: { reloadFlag?: number }) {
     const fetchEvents = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
-      const res = await fetch("http://localhost:4000/api/calendar-events", {
+      const res = await fetch(`${API_BASE_URL}/api/calendar-events`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

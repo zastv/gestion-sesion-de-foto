@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_BASE_URL } from "../config";
 import "./Packages.css";
 
 const packages = [
@@ -43,7 +44,7 @@ export default function Packages() {
       return;
     }
     try {
-      const res = await fetch("http://localhost:4000/api/custom-package", {
+      const res = await fetch(`${API_BASE_URL}/api/custom-package`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
