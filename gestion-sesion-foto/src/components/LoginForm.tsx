@@ -14,19 +14,28 @@ export default function LoginForm() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    
+    console.log("Intentando login con:", { email, password: "***", url: `${API_BASE_URL}/api/login` });
+    
     try {
       const res = await fetch(`${API_BASE_URL}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
+      
+      console.log("Respuesta del servidor:", res.status, res.statusText);
+      
       const data = await res.json();
+      console.log("Datos recibidos:", data);
+      
       if (!res.ok) throw new Error(data.error || "Error de login");
       // Guardar token en localStorage (opcional)
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       navigate("/dashboard");
     } catch (err: any) {
+      console.error("Error en login:", err);
       setError(err.message);
     } finally {
       setLoading(false);
