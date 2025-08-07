@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { API_BASE_URL_CORRECTED as API_BASE_URL } from "../config";
+import BookingModal from "./BookingModal";
 import "./CalendarView.css";
 
 const hours = [
@@ -11,7 +12,9 @@ export default function CalendarView({ reloadFlag }: { reloadFlag?: number }) {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedHour, setSelectedHour] = useState<string | null>(null);
   const [events, setEvents] = useState<any[]>([]);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -26,6 +29,28 @@ export default function CalendarView({ reloadFlag }: { reloadFlag?: number }) {
     };
     fetchEvents();
   }, [reloadFlag]);
+
+  const handleBookingSuccess = () => {
+    // Recargar eventos después de una reserva exitosa
+    const fetchEvents = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await fetch(`${API_BASE_URL}/api/calendar-events`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setEvents(await res.json());
+      }
+    };
+    fetchEvents();
+  };
+
+  const handleHourClick = (hour: string) => {
+    if (selectedDate && !busySlots[selectedDate]?.includes(hour)) {
+      setSelectedHour(hour);
+      setIsBookingModalOpen(true);
+    }
+  };
 
   function getDaysInMonth(year: number, month: number) {
     return new Date(year, month + 1, 0).getDate();
@@ -66,17 +91,21 @@ export default function CalendarView({ reloadFlag }: { reloadFlag?: number }) {
           {Array(getDaysInMonth(currentYear, currentMonth)).fill(null).map((_, i) => {
             const day = i + 1;
             const dateStr = getDateString(day);
+            const currentDate = new Date(currentYear, currentMonth, day);
             const isToday =
               day === today.getDate() &&
               currentMonth === today.getMonth() &&
               currentYear === today.getFullYear();
             const isSelected = selectedDate === dateStr;
             const isBusy = busySlots[dateStr]?.length > 0;
+            const isPast = currentDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            
             return (
               <div
                 key={dateStr}
-                className={`calendar-day${isToday ? " today" : ""}${isSelected ? " selected" : ""}${isBusy ? " busy" : ""}`}
-                onClick={() => setSelectedDate(dateStr)}
+                className={`calendar-day${isToday ? " today" : ""}${isSelected ? " selected" : ""}${isBusy ? " busy" : ""}${isPast ? " past" : ""}`}
+                onClick={() => !isPast && setSelectedDate(dateStr)}
+                style={{ cursor: isPast ? 'not-allowed' : 'pointer' }}
               >
                 {day}
               </div>
@@ -88,17 +117,30 @@ export default function CalendarView({ reloadFlag }: { reloadFlag?: number }) {
         <div className="calendar-hours-container">
           <h4>Horas para {selectedDate}</h4>
           <div className="calendar-hours-grid">
-            {hours.map((h) => (
-              <div
-                key={h}
-                className={`calendar-hour${busySlots[selectedDate]?.includes(h) ? " busy" : " available"}`}
-              >
-                {h} {busySlots[selectedDate]?.includes(h) ? "(Ocupado)" : "(Disponible)"}
-              </div>
-            ))}
+            {hours.map((h) => {
+              const isBusy = busySlots[selectedDate]?.includes(h);
+              return (
+                <div
+                  key={h}
+                  className={`calendar-hour${isBusy ? " busy" : " available"}`}
+                  onClick={() => !isBusy && handleHourClick(h)}
+                  style={{ cursor: isBusy ? 'not-allowed' : 'pointer' }}
+                >
+                  {h} {isBusy ? "(Ocupado)" : "(Disponible - Click para reservar)"}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
+      
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        selectedDate={selectedDate || ""}
+        selectedHour={selectedHour || ""}
+        onBookingSuccess={handleBookingSuccess}
+      />
     </div>
   );
 }

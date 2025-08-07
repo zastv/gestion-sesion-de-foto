@@ -3,6 +3,7 @@ import Navbar from "../components/Navbar";
 import SessionManager from "../components/SessionManager";
 import CalendarView from "../components/CalendarView";
 import NewSessionForm from "../components/NewSessionForm";
+import MyBookings from "../components/MyBookings";
 import '../App.css';
 
 import imgProfesional from '../assets/30135.jpg';
@@ -11,6 +12,8 @@ import imgCalidad from '../assets/IMG_8213.jpg';
 
 export default function Dashboard() {
   const [reloadFlag, setReloadFlag] = useState(0);
+  const [activeTab, setActiveTab] = useState("calendar");
+  
   const handleSessionCreated = () => {
     setReloadFlag(f => f + 1);
   };
@@ -63,10 +66,69 @@ export default function Dashboard() {
           </button>
         </section>
         {/* Componentes funcionales debajo */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
-          <NewSessionForm onSessionCreated={handleSessionCreated} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+          {/* Navegación por pestañas */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <button 
+              onClick={() => setActiveTab("calendar")}
+              style={{ 
+                padding: '0.8rem 1.5rem', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: activeTab === "calendar" ? '#3b82f6' : '#e5e7eb', 
+                color: activeTab === "calendar" ? 'white' : '#374151',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              📅 Agendar Sesión
+            </button>
+            <button 
+              onClick={() => setActiveTab("bookings")}
+              style={{ 
+                padding: '0.8rem 1.5rem', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: activeTab === "bookings" ? '#3b82f6' : '#e5e7eb', 
+                color: activeTab === "bookings" ? 'white' : '#374151',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              📋 Mis Sesiones
+            </button>
+            <button 
+              onClick={() => setActiveTab("custom")}
+              style={{ 
+                padding: '0.8rem 1.5rem', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: activeTab === "custom" ? '#3b82f6' : '#e5e7eb', 
+                color: activeTab === "custom" ? 'white' : '#374151',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              ⚙️ Solicitud Personalizada
+            </button>
+          </div>
+
+          {/* Contenido según la pestaña activa */}
+          {activeTab === "calendar" && (
+            <CalendarView reloadFlag={reloadFlag} />
+          )}
+          
+          {activeTab === "bookings" && (
+            <MyBookings />
+          )}
+          
+          {activeTab === "custom" && (
+            <div style={{ width: '100%', maxWidth: '600px' }}>
+              <NewSessionForm onSessionCreated={handleSessionCreated} />
+            </div>
+          )}
+          
           <SessionManager />
-          <CalendarView reloadFlag={reloadFlag} />
         </div>
       </div>
     </>

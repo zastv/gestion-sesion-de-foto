@@ -108,7 +108,15 @@
 }
 .calendar-day.busy {
   background: #fecaca;
-  color: #b91c1c;
+  border: 1px solid #f87171;
+  color: #991b1b;
+}
+
+.calendar-day.past {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed !important;
+  opacity: 0.5;
 }
 .calendar-day.empty {
   background: transparent;
@@ -144,9 +152,20 @@
   color: #16a34a;
   background: #dcfce7;
   border-color: #bbf7d0;
+  cursor: pointer;
+  transition: all 0.2s;
 }
+
+.calendar-hour.available:hover {
+  background: #bbf7d0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
 .calendar-hour.busy {
   color: #b91c1c;
   background: #fee2e2;
   border-color: #fecaca;
+  cursor: not-allowed;
+  opacity: 0.7;
 } 

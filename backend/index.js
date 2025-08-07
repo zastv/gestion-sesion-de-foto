@@ -183,11 +183,42 @@ app.post('/api/sessions', authenticateJWT, async (req, res) => {
     if (!title || !date || !duration_minutes) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
+
+    // Validar que la fecha sea futura
+    const sessionDate = new Date(date);
+    const now = new Date();
+    if (sessionDate <= now) {
+      return res.status(400).json({ error: 'No se pueden agendar sesiones en fechas pasadas' });
+    }
+
+    // Validar que la hora esté dentro del horario laboral (9:00 - 17:00)
+    const sessionHour = sessionDate.getHours();
+    if (sessionHour < 9 || sessionHour >= 17) {
+      return res.status(400).json({ error: 'Las sesiones solo se pueden agendar entre 9:00 AM y 5:00 PM' });
+    }
+
+    // Verificar disponibilidad - buscar conflictos
+    const conflicts = await pool.query(
+      `SELECT * FROM "CalendarEvent" 
+       WHERE DATE(start) = DATE($1) 
+       AND (
+         (start <= $1 AND "end" > $1) OR
+         (start < $2 AND "end" >= $2) OR
+         (start >= $1 AND "end" <= $2)
+       )`,
+      [date, new Date(new Date(date).getTime() + duration_minutes * 60000).toISOString()]
+    );
+
+    if (conflicts.rows.length > 0) {
+      return res.status(400).json({ error: 'Ya existe una sesión agendada en ese horario' });
+    }
+
     const sessionResult = await pool.query(
       'INSERT INTO "Session" (userId, title, description, date, duration_minutes, location, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [req.user.userId, title, description, date, duration_minutes, location, 'pendiente']
     );
     const session = sessionResult.rows[0];
+    
     // Crear evento en el calendario
     const start = date;
     const end = new Date(new Date(date).getTime() + duration_minutes * 60000).toISOString();
@@ -195,7 +226,8 @@ app.post('/api/sessions', authenticateJWT, async (req, res) => {
       'INSERT INTO "CalendarEvent" (sessionId, start, "end", title, color) VALUES ($1, $2, $3, $4, $5)',
       [session.id, start, end, title, '#2563eb']
     );
-    res.status(201).json({ message: 'Sesión agendada', session });
+    
+    res.status(201).json({ message: 'Sesión agendada exitosamente', session });
   } catch (error) {
     console.error('Create session error:', error);
     res.status(500).json({ error: 'Error en el servidor: ' + error.message });
@@ -212,6 +244,69 @@ app.get('/api/calendar-events', authenticateJWT, async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Get calendar events error:', error);
+    res.status(500).json({ error: 'Error en el servidor: ' + error.message });
+  }
+});
+
+// Endpoint para obtener las sesiones del usuario
+app.get('/api/my-sessions', authenticateJWT, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM "Session" WHERE userId = $1 ORDER BY date DESC',
+      [req.user.userId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get my sessions error:', error);
+    res.status(500).json({ error: 'Error en el servidor: ' + error.message });
+  }
+});
+
+// Endpoint para cancelar una sesión
+app.put('/api/sessions/:id/cancel', authenticateJWT, async (req, res) => {
+  try {
+    const sessionId = parseInt(req.params.id);
+    
+    // Verificar que la sesión pertenece al usuario
+    const sessionCheck = await pool.query(
+      'SELECT * FROM "Session" WHERE id = $1 AND userId = $2',
+      [sessionId, req.user.userId]
+    );
+    
+    if (sessionCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Sesión no encontrada' });
+    }
+    
+    const session = sessionCheck.rows[0];
+    
+    // Verificar que la sesión se puede cancelar (más de 24 horas de anticipación)
+    const sessionDate = new Date(session.date);
+    const now = new Date();
+    const hoursUntilSession = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursUntilSession <= 24) {
+      return res.status(400).json({ error: 'No se puede cancelar una sesión con menos de 24 horas de anticipación' });
+    }
+    
+    if (session.status === 'cancelada') {
+      return res.status(400).json({ error: 'La sesión ya está cancelada' });
+    }
+    
+    // Actualizar el estado de la sesión
+    await pool.query(
+      'UPDATE "Session" SET status = $1 WHERE id = $2',
+      ['cancelada', sessionId]
+    );
+    
+    // Eliminar el evento del calendario
+    await pool.query(
+      'DELETE FROM "CalendarEvent" WHERE sessionId = $1',
+      [sessionId]
+    );
+    
+    res.json({ message: 'Sesión cancelada exitosamente' });
+  } catch (error) {
+    console.error('Cancel session error:', error);
     res.status(500).json({ error: 'Error en el servidor: ' + error.message });
   }
 });
