@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API_BASE_URL } from "../config";
+import { API_BASE_URL_CORRECTED as API_BASE_URL } from "../config";
 import "./NewSessionForm.css";
 
 export default function NewSessionForm({ onSessionCreated }: { onSessionCreated?: () => void }) {

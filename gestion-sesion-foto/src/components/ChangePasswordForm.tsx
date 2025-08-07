@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API_BASE_URL } from "../config";
+import { API_BASE_URL_CORRECTED as API_BASE_URL } from "../config";
 
 export default function ChangePasswordForm({ onSuccess }: { onSuccess?: () => void }) {
   const [currentPassword, setCurrentPassword] = useState("");
