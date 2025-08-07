@@ -1,57 +1,228 @@
 .session-container {
-  background: #fff;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  width: 100%;
-  max-width: 600px;
-  margin-bottom: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
-.session-title {
-  font-size: 2rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
+
+.session-header {
   text-align: center;
+  margin-bottom: 32px;
 }
-.session-new {
-  background: #22c55e;
-  color: #fff;
-  padding: 0.5rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  margin-bottom: 1rem;
-  transition: background 0.2s;
+
+.session-title {
+  color: #1f2937;
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
 }
-.session-new:hover {
-  background: #16a34a;
+
+.session-subtitle {
+  color: #6b7280;
+  margin: 0;
+  font-size: 16px;
 }
-.session-list {
-  list-style: none;
-  padding: 0;
+
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.empty-sessions {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-sessions h3 {
+  color: #1f2937;
+  margin: 0 0 8px 0;
+  font-size: 20px;
+}
+
+.empty-sessions p {
+  color: #6b7280;
   margin: 0;
 }
-.session-item {
-  border-bottom: 1px solid #eee;
-  padding: 1rem 0;
+
+.sessions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+.session-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.session-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.session-card-header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.session-card-title {
+  color: #1f2937;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.session-status {
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.session-card-body {
+  margin-bottom: 20px;
+}
+
+.session-detail {
+  display: flex;
   align-items: center;
+  margin-bottom: 12px;
+  font-size: 14px;
 }
-.session-edit {
-  color: #2563eb;
-  background: none;
-  border: none;
-  margin-right: 1rem;
-  cursor: pointer;
-  font-weight: bold;
+
+.detail-icon {
+  width: 20px;
+  margin-right: 12px;
+  font-size: 16px;
 }
-.session-delete {
+
+.detail-text {
+  color: #374151;
+  flex: 1;
+}
+
+.payment-status {
+  font-weight: 600;
+}
+
+.payment-status.paid {
+  color: #059669;
+}
+
+.payment-status.unpaid {
   color: #dc2626;
-  background: none;
+}
+
+.session-card-footer {
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: center;
+}
+
+.pay-session-btn {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white;
   border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  font-weight: bold;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+}
+
+.pay-session-btn:hover {
+  background: linear-gradient(135deg, #047857, #065f46);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+}
+
+.session-paid-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paid-badge {
+  color: #059669;
+  font-weight: 600;
+  background: #d1fae5;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.session-created {
+  font-size: 12px;
+  color: #9ca3af;
+  text-align: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .session-container {
+    padding: 16px;
+  }
+  
+  .sessions-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .session-card {
+    padding: 20px;
+  }
+  
+  .session-card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .session-card-title {
+    margin-right: 0;
+  }
 } 

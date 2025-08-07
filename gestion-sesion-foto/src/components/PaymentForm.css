@@ -1,0 +1,249 @@
+.payment-form-container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.payment-header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.payment-header h3 {
+  color: #1f2937;
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.session-title {
+  color: #6b7280;
+  margin: 0;
+  font-size: 16px;
+}
+
+.payment-summary {
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.amount-row,
+.discount-row,
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.discount-row {
+  color: #059669;
+}
+
+.discount-amount {
+  font-weight: 600;
+}
+
+.total-row {
+  padding-top: 8px;
+  border-top: 1px solid #d1d5db;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.coupon-section {
+  background: #eff6ff;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border: 1px solid #dbeafe;
+}
+
+.coupon-section h4 {
+  margin: 0 0 12px 0;
+  color: #1e40af;
+  font-size: 16px;
+}
+
+.coupon-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.coupon-input-group input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.coupon-input-group input.error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.validate-coupon-btn {
+  padding: 8px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.validate-coupon-btn:hover {
+  background: #2563eb;
+}
+
+.coupon-applied {
+  background: #f0fdf4;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border: 1px solid #bbf7d0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.coupon-success {
+  color: #059669;
+  font-weight: 500;
+}
+
+.remove-coupon-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.remove-coupon-btn:hover {
+  background: #dc2626;
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 14px;
+  margin: 8px 0 0 0;
+}
+
+.payment-form h4 {
+  margin: 0 0 16px 0;
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.card-element-container {
+  background: white;
+  padding: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  transition: border-color 0.2s;
+}
+
+.card-element-container:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.cancel-btn,
+.pay-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.pay-btn {
+  background: #059669;
+  color: white;
+}
+
+.pay-btn:hover:not(:disabled) {
+  background: #047857;
+}
+
+.pay-btn:disabled,
+.cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.payment-security {
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.payment-security p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.loading-stripe {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .payment-form-container {
+    margin: 10px;
+    padding: 16px;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .coupon-input-group {
+    flex-direction: column;
+  }
+  
+  .coupon-applied {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}

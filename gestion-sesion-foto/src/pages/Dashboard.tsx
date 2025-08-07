@@ -4,6 +4,7 @@ import SessionManager from "../components/SessionManager";
 import CalendarView from "../components/CalendarView";
 import NewSessionForm from "../components/NewSessionForm";
 import MyBookings from "../components/MyBookings";
+import PaymentHistory from "../components/PaymentHistory";
 import '../App.css';
 
 import imgProfesional from '../assets/30135.jpg';
@@ -68,7 +69,7 @@ export default function Dashboard() {
         {/* Componentes funcionales debajo */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
           {/* Navegación por pestañas */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
             <button 
               onClick={() => setActiveTab("calendar")}
               style={{ 
@@ -98,6 +99,20 @@ export default function Dashboard() {
               📋 Mis Sesiones
             </button>
             <button 
+              onClick={() => setActiveTab("payments")}
+              style={{ 
+                padding: '0.8rem 1.5rem', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: activeTab === "payments" ? '#3b82f6' : '#e5e7eb', 
+                color: activeTab === "payments" ? 'white' : '#374151',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              💳 Mis Pagos
+            </button>
+            <button 
               onClick={() => setActiveTab("custom")}
               style={{ 
                 padding: '0.8rem 1.5rem', 
@@ -120,6 +135,10 @@ export default function Dashboard() {
           
           {activeTab === "bookings" && (
             <MyBookings />
+          )}
+          
+          {activeTab === "payments" && (
+            <PaymentHistory />
           )}
           
           {activeTab === "custom" && (

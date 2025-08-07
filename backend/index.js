@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const { createClient } = require('@supabase/supabase-js');
+const stripe = require('stripe');
 require('dotenv').config();
 
 const app = express();
@@ -19,6 +20,9 @@ const pool = new Pool({
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 let supabase = null;
+
+// Configuración de Stripe
+const stripeClient = stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_51...'); // Usar clave real en producción
 
 if (supabaseUrl && supabaseServiceKey && process.env.USE_SUPABASE === 'true') {
   supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -465,3 +469,234 @@ app.listen(PORT, () => {
 //   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 //   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 // );
+
+// ===================================
+// 💳 SISTEMA DE PAGOS - HU-5
+// ===================================
+
+// Crear Payment Intent para Stripe
+app.post('/api/create-payment-intent', authenticateJWT, async (req, res) => {
+  try {
+    const { sessionId, amount, currency = 'usd', couponCode } = req.body;
+    
+    if (!sessionId || !amount) {
+      return res.status(400).json({ error: 'sessionId y amount son requeridos' });
+    }
+
+    // Verificar que la sesión pertenece al usuario
+    const sessionResult = await dbQuery(
+      'SELECT * FROM "Session" WHERE id = $1 AND userId = $2',
+      [sessionId, req.user.userId]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Sesión no encontrada' });
+    }
+
+    let finalAmount = amount;
+    let discountAmount = 0;
+
+    // Aplicar cupón si se proporciona
+    if (couponCode) {
+      const couponResult = await dbQuery(
+        'SELECT * FROM "Coupon" WHERE code = $1 AND is_active = true AND (valid_until IS NULL OR valid_until > NOW())',
+        [couponCode]
+      );
+
+      if (couponResult.rows.length > 0) {
+        const coupon = couponResult.rows[0];
+        
+        if (coupon.type === 'percentage') {
+          discountAmount = (amount * coupon.value) / 100;
+        } else if (coupon.type === 'fixed_amount') {
+          discountAmount = Math.min(coupon.value, amount);
+        }
+        
+        finalAmount = Math.max(amount - discountAmount, 0);
+      }
+    }
+
+    // Crear Payment Intent en Stripe
+    const paymentIntent = await stripeClient.paymentIntents.create({
+      amount: Math.round(finalAmount * 100), // Stripe usa centavos
+      currency: currency,
+      metadata: {
+        sessionId: sessionId.toString(),
+        userId: req.user.userId.toString(),
+        originalAmount: amount.toString(),
+        discountAmount: discountAmount.toString()
+      }
+    });
+
+    // Guardar pago en la base de datos
+    const paymentResult = await dbQuery(
+      'INSERT INTO "Payment" (sessionId, userId, amount, currency, status, payment_intent_id, due_date) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [sessionId, req.user.userId, finalAmount, currency, 'pending', paymentIntent.id, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)] // 7 días para pagar
+    );
+
+    const payment = paymentResult.rows[0];
+
+    // Si se aplicó un cupón, registrarlo
+    if (couponCode && discountAmount > 0) {
+      const couponResult = await dbQuery('SELECT id FROM "Coupon" WHERE code = $1', [couponCode]);
+      if (couponResult.rows.length > 0) {
+        await dbQuery(
+          'INSERT INTO "PaymentCoupon" (paymentId, couponId, discount_amount) VALUES ($1, $2, $3)',
+          [payment.id, couponResult.rows[0].id, discountAmount]
+        );
+        
+        // Incrementar uso del cupón
+        await dbQuery(
+          'UPDATE "Coupon" SET used_count = used_count + 1 WHERE id = $1',
+          [couponResult.rows[0].id]
+        );
+      }
+    }
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentId: payment.id,
+      finalAmount: finalAmount,
+      discountAmount: discountAmount
+    });
+
+  } catch (error) {
+    console.error('Error creating payment intent:', error);
+    res.status(500).json({ error: 'Error en el servidor: ' + error.message });
+  }
+});
+
+// Confirmar pago (webhook de Stripe)
+app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripeClient.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.log('❌ Webhook signature verification failed.', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Manejar eventos de Stripe
+  switch (event.type) {
+    case 'payment_intent.succeeded':
+      const paymentIntent = event.data.object;
+      
+      // Actualizar estado del pago
+      await dbQuery(
+        'UPDATE "Payment" SET status = $1, paid_at = NOW() WHERE payment_intent_id = $2',
+        ['completed', paymentIntent.id]
+      );
+
+      // Actualizar estado de la sesión
+      const metadata = paymentIntent.metadata;
+      if (metadata.sessionId) {
+        await dbQuery(
+          'UPDATE "Session" SET status = $1 WHERE id = $2',
+          ['confirmada', metadata.sessionId]
+        );
+      }
+
+      console.log('✅ Pago confirmado:', paymentIntent.id);
+      break;
+
+    case 'payment_intent.payment_failed':
+      const failedPayment = event.data.object;
+      
+      await dbQuery(
+        'UPDATE "Payment" SET status = $1 WHERE payment_intent_id = $2',
+        ['failed', failedPayment.id]
+      );
+
+      console.log('❌ Pago fallido:', failedPayment.id);
+      break;
+
+    default:
+      console.log(`Evento no manejado: ${event.type}`);
+  }
+
+  res.json({received: true});
+});
+
+// Obtener pagos del usuario
+app.get('/api/my-payments', authenticateJWT, async (req, res) => {
+  try {
+    const result = await dbQuery(`
+      SELECT 
+        p.*,
+        s.title as session_title,
+        s.date as session_date,
+        i.invoice_number,
+        i.pdf_url
+      FROM "Payment" p
+      LEFT JOIN "Session" s ON p.sessionId = s.id
+      LEFT JOIN "Invoice" i ON i.paymentId = p.id
+      WHERE p.userId = $1
+      ORDER BY p.created_at DESC
+    `, [req.user.userId]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching payments:', error);
+    res.status(500).json({ error: 'Error en el servidor: ' + error.message });
+  }
+});
+
+// Validar cupón de descuento
+app.post('/api/validate-coupon', authenticateJWT, async (req, res) => {
+  try {
+    const { couponCode, amount } = req.body;
+
+    if (!couponCode) {
+      return res.status(400).json({ error: 'Código de cupón requerido' });
+    }
+
+    const result = await dbQuery(
+      'SELECT * FROM "Coupon" WHERE code = $1 AND is_active = true AND (valid_until IS NULL OR valid_until > NOW())',
+      [couponCode]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Cupón no válido o expirado' });
+    }
+
+    const coupon = result.rows[0];
+
+    // Verificar límite de uso
+    if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
+      return res.status(400).json({ error: 'Cupón agotado' });
+    }
+
+    // Calcular descuento
+    let discountAmount = 0;
+    if (coupon.type === 'percentage') {
+      discountAmount = (amount * coupon.value) / 100;
+    } else if (coupon.type === 'fixed_amount') {
+      discountAmount = Math.min(coupon.value, amount);
+    }
+
+    res.json({
+      valid: true,
+      coupon: {
+        code: coupon.code,
+        type: coupon.type,
+        value: coupon.value,
+        description: coupon.description
+      },
+      discountAmount: discountAmount,
+      finalAmount: Math.max(amount - discountAmount, 0)
+    });
+
+  } catch (error) {
+    console.error('Error validating coupon:', error);
+    res.status(500).json({ error: 'Error en el servidor: ' + error.message });
+  }
+});
+
+// Obtener configuración pública de Stripe
+app.get('/api/stripe-config', (req, res) => {
+  res.json({
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
+  });
+});
