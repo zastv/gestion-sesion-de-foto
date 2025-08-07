@@ -1,11 +1,13 @@
-// Configuración de la aplicación
+// Configuración de la aplicación - v2.0
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.PROD 
     ? "https://gestion-sesion-de-foto.onrender.com" // Backend desplegado en Render
     : "http://localhost:4000");
 
 // Debug: verificar qué URL se está usando
-console.log("🔧 Configuración API:");
+console.log("🔧 Configuración API v2:");
 console.log("- VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
 console.log("- PROD:", import.meta.env.PROD);
+console.log("- Mode:", import.meta.env.MODE);
 console.log("- API_BASE_URL final:", API_BASE_URL);
+console.log("- Build timestamp:", new Date().toISOString());
