@@ -1,12 +1,4 @@
 {
-  "version": 2,
-  "buildCommand": "cd gestion-sesion-foto && npm run build",
-  "outputDirectory": "gestion-sesion-foto/dist",
-  "framework": "vite",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
+  "buildCommand": "cd gestion-sesion-foto && npm install && npm run build",
+  "outputDirectory": "gestion-sesion-foto/dist"
 }
