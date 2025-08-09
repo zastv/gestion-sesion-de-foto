@@ -323,6 +323,7 @@ app.get('/api/user-sessions', authenticateJWT, async (req, res) => {
 // Endpoint público para obtener horarios ocupados (NO requiere autenticación)
 app.get('/api/sessions/occupied-slots', async (req, res) => {
   try {
+    console.log('📅 Fetching occupied slots...');
     const result = await dbQuery(`
       SELECT 
         DATE(date) as date,
@@ -331,12 +332,14 @@ app.get('/api/sessions/occupied-slots', async (req, res) => {
           WHEN EXTRACT(MINUTE FROM date) < 10 THEN '0' || EXTRACT(MINUTE FROM date)
           ELSE EXTRACT(MINUTE FROM date)::text
         END as time,
-        duration_minutes
+        duration_minutes,
+        title
       FROM "Session" 
       WHERE date >= CURRENT_DATE
-      AND status IN ('confirmed', 'pending')
       ORDER BY date ASC
     `);
+    
+    console.log(`📊 Found ${result.rows.length} sessions`);
     
     // Agrupar por fecha para facilitar el manejo en el frontend
     const occupiedSlots = {};
@@ -347,13 +350,15 @@ app.get('/api/sessions/occupied-slots', async (req, res) => {
       }
       occupiedSlots[dateString].push({
         time: slot.time,
-        duration: slot.duration_minutes
+        duration: slot.duration_minutes,
+        title: slot.title
       });
     });
     
+    console.log('📋 Occupied slots grouped:', occupiedSlots);
     res.json(occupiedSlots);
   } catch (error) {
-    console.error('Error al obtener horarios ocupados:', error);
+    console.error('❌ Error al obtener horarios ocupados:', error);
     res.status(500).json({ error: 'Error del servidor' });
   }
 });
