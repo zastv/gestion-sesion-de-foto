@@ -48,11 +48,27 @@ app.use(cors({
     'http://localhost:5174', 
     'http://localhost:3000',
     'https://orange-space-giggle-vx5v6qg5jgwcwxj5-5173.app.github.dev',
+    'https://gestion-sesion-de-foto.vercel.app',
     /^https:\/\/.*\.vercel\.app$/,
     /^https:\/\/.*\.netlify\.app$/
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Middleware adicional para OPTIONS preflight
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json());
 
 // Login endpoint
