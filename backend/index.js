@@ -304,6 +304,44 @@ app.get('/api/user-sessions', authenticateJWT, async (req, res) => {
   }
 });
 
+// Endpoint público para obtener horarios ocupados (NO requiere autenticación)
+app.get('/api/sessions/occupied-slots', async (req, res) => {
+  try {
+    const result = await dbQuery(`
+      SELECT 
+        DATE(date) as date,
+        EXTRACT(HOUR FROM date) || ':' || 
+        CASE 
+          WHEN EXTRACT(MINUTE FROM date) < 10 THEN '0' || EXTRACT(MINUTE FROM date)
+          ELSE EXTRACT(MINUTE FROM date)::text
+        END as time,
+        duration_minutes
+      FROM "Session" 
+      WHERE date >= CURRENT_DATE
+      AND status IN ('confirmed', 'pending')
+      ORDER BY date ASC
+    `);
+    
+    // Agrupar por fecha para facilitar el manejo en el frontend
+    const occupiedSlots = {};
+    result.rows.forEach(slot => {
+      const dateString = slot.date.toISOString().split('T')[0];
+      if (!occupiedSlots[dateString]) {
+        occupiedSlots[dateString] = [];
+      }
+      occupiedSlots[dateString].push({
+        time: slot.time,
+        duration: slot.duration_minutes
+      });
+    });
+    
+    res.json(occupiedSlots);
+  } catch (error) {
+    console.error('Error al obtener horarios ocupados:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 // Endpoint para cancelar una sesión
 app.put('/api/sessions/:id/cancel', authenticateJWT, async (req, res) => {
   try {

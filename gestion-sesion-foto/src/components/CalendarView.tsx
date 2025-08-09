@@ -1,146 +1,194 @@
-import { useState, useEffect } from "react";
-import { API_BASE_URL_CORRECTED as API_BASE_URL } from "../config";
-import BookingModal from "./BookingModal";
-import "./CalendarView.css";
+import { useState, useEffect } from 'react';
+import { API_BASE_URL_CORRECTED as API_BASE_URL } from '../config';
+import './CalendarView.css';
 
-const hours = [
-  "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"
-];
+interface OccupiedSlot {
+  time: string;
+  duration: number;
+}
 
-export default function CalendarView({ reloadFlag }: { reloadFlag?: number }) {
-  const today = new Date();
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedHour, setSelectedHour] = useState<string | null>(null);
-  const [events, setEvents] = useState<any[]>([]);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+interface OccupiedSlots {
+  [date: string]: OccupiedSlot[];
+}
 
+interface CalendarViewProps {
+  onDateSelect?: (date: string) => void;
+  selectedDate?: string;
+}
+
+export default function CalendarView({ onDateSelect, selectedDate }: CalendarViewProps) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [occupiedSlots, setOccupiedSlots] = useState<OccupiedSlots>({});
+  const [loading, setLoading] = useState(true);
+  const [selectedDateDetails, setSelectedDateDetails] = useState<OccupiedSlot[]>([]);
+
+  // Cargar horarios ocupados
   useEffect(() => {
-    const fetchEvents = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-      const res = await fetch(`${API_BASE_URL}/api/calendar-events`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setEvents(await res.json());
+    const fetchOccupiedSlots = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/sessions/occupied-slots`);
+        if (res.ok) {
+          const data = await res.json();
+          setOccupiedSlots(data);
+        }
+      } catch (error) {
+        console.error('Error al cargar horarios ocupados:', error);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchEvents();
-  }, [reloadFlag]);
 
-  const handleBookingSuccess = () => {
-    // Recargar eventos después de una reserva exitosa
-    const fetchEvents = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-      const res = await fetch(`${API_BASE_URL}/api/calendar-events`, {
-        headers: { Authorization: `Bearer ${token}` }
+    fetchOccupiedSlots();
+  }, []);
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+
+    const days = [];
+    
+    // Días del mes anterior
+    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+      const prevDate = new Date(year, month, -i);
+      days.push({
+        date: prevDate,
+        isCurrentMonth: false,
+        isOccupied: false,
+        dateString: prevDate.toISOString().split('T')[0]
       });
-      if (res.ok) {
-        setEvents(await res.json());
-      }
-    };
-    fetchEvents();
+    }
+
+    // Días del mes actual
+    for (let day = 1; day <= daysInMonth; day++) {
+      const currentDate = new Date(year, month, day);
+      const dateString = currentDate.toISOString().split('T')[0];
+      const isOccupied = occupiedSlots[dateString]?.length > 0;
+      
+      days.push({
+        date: currentDate,
+        isCurrentMonth: true,
+        isOccupied,
+        dateString
+      });
+    }
+
+    return days;
   };
 
-  const handleHourClick = (hour: string) => {
-    if (selectedDate && !busySlots[selectedDate]?.includes(hour)) {
-      setSelectedHour(hour);
-      setIsBookingModalOpen(true);
+  const handleDateClick = (dateString: string, isCurrentMonth: boolean) => {
+    if (!isCurrentMonth) return;
+    
+    const slots = occupiedSlots[dateString] || [];
+    setSelectedDateDetails(slots);
+    onDateSelect?.(dateString);
+  };
+
+  const formatTime = (timeString: string) => {
+    return timeString;
+  };
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0 && mins > 0) {
+      return `${hours}h ${mins}m`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${mins}m`;
     }
   };
 
-  function getDaysInMonth(year: number, month: number) {
-    return new Date(year, month + 1, 0).getDate();
-  }
-  function getFirstDayOfWeek(year: number, month: number) {
-    return new Date(year, month, 1).getDay();
-  }
-  function getDateString(day: number) {
-    return `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  }
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
 
-  // Map events to busy slots
-  const busySlots: Record<string, string[]> = {};
-  for (const ev of events) {
-    const date = ev.start.slice(0, 10);
-    const hour = ev.start.slice(11, 16);
-    if (!busySlots[date]) busySlots[date] = [];
-    busySlots[date].push(hour);
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+  const days = getDaysInMonth(currentMonth);
+
+  const goToPreviousMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  };
+
+  const goToNextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  };
+
+  if (loading) {
+    return (
+      <div className="calendar-container">
+        <div className="calendar-loading">Cargando calendario...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="calendar-full-container">
+    <div className="calendar-container">
       <div className="calendar-header">
-        <button onClick={() => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); } else { setCurrentMonth(currentMonth - 1); } setSelectedDate(null); }}>&lt;</button>
-        <span>{["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][currentMonth]} {currentYear}</span>
-        <button onClick={() => { if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1); } else { setCurrentMonth(currentMonth + 1); } setSelectedDate(null); }}>&gt;</button>
+        <button onClick={goToPreviousMonth} className="calendar-nav-btn">‹</button>
+        <h3 className="calendar-title">
+          {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+        </h3>
+        <button onClick={goToNextMonth} className="calendar-nav-btn">›</button>
       </div>
-      <div className="calendar-table">
-        <div className="calendar-weekdays">
-          {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((d) => (
-            <div key={d} className="calendar-weekday">{d}</div>
-          ))}
-        </div>
-        <div className="calendar-days">
-          {Array(getFirstDayOfWeek(currentYear, currentMonth)).fill(null).map((_, i) => (
-            <div key={"empty-" + i} className="calendar-day empty"></div>
-          ))}
-          {Array(getDaysInMonth(currentYear, currentMonth)).fill(null).map((_, i) => {
-            const day = i + 1;
-            const dateStr = getDateString(day);
-            const currentDate = new Date(currentYear, currentMonth, day);
-            const isToday =
-              day === today.getDate() &&
-              currentMonth === today.getMonth() &&
-              currentYear === today.getFullYear();
-            const isSelected = selectedDate === dateStr;
-            const isBusy = busySlots[dateStr]?.length > 0;
-            const isPast = currentDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            
-            return (
-              <div
-                key={dateStr}
-                className={`calendar-day${isToday ? " today" : ""}${isSelected ? " selected" : ""}${isBusy ? " busy" : ""}${isPast ? " past" : ""}`}
-                onClick={() => !isPast && setSelectedDate(dateStr)}
-                style={{ cursor: isPast ? 'not-allowed' : 'pointer' }}
-              >
-                {day}
+
+      <div className="calendar-weekdays">
+        {dayNames.map(day => (
+          <div key={day} className="calendar-weekday">{day}</div>
+        ))}
+      </div>
+
+      <div className="calendar-grid">
+        {days.map((day, index) => (
+          <div
+            key={index}
+            className={`calendar-day ${
+              !day.isCurrentMonth ? 'calendar-day-other-month' : ''
+            } ${
+              day.isOccupied ? 'calendar-day-occupied' : 'calendar-day-available'
+            } ${
+              selectedDate === day.dateString ? 'calendar-day-selected' : ''
+            }`}
+            onClick={() => handleDateClick(day.dateString, day.isCurrentMonth)}
+          >
+            <span className="calendar-day-number">{day.date.getDate()}</span>
+            {day.isOccupied && day.isCurrentMonth && (
+              <div className="calendar-day-indicator">●</div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {selectedDate && selectedDateDetails.length > 0 && (
+        <div className="calendar-day-details">
+          <h4>Horarios ocupados - {selectedDate}</h4>
+          <div className="occupied-slots-list">
+            {selectedDateDetails.map((slot, index) => (
+              <div key={index} className="occupied-slot">
+                <span className="occupied-time">{formatTime(slot.time)}</span>
+                <span className="occupied-duration">({formatDuration(slot.duration)})</span>
               </div>
-            );
-          })}
-        </div>
-      </div>
-      {selectedDate && (
-        <div className="calendar-hours-container">
-          <h4>Horas para {selectedDate}</h4>
-          <div className="calendar-hours-grid">
-            {hours.map((h) => {
-              const isBusy = busySlots[selectedDate]?.includes(h);
-              return (
-                <div
-                  key={h}
-                  className={`calendar-hour${isBusy ? " busy" : " available"}`}
-                  onClick={() => !isBusy && handleHourClick(h)}
-                  style={{ cursor: isBusy ? 'not-allowed' : 'pointer' }}
-                >
-                  {h} {isBusy ? "(Ocupado)" : "(Disponible - Click para reservar)"}
-                </div>
-              );
-            })}
+            ))}
           </div>
         </div>
       )}
-      
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        selectedDate={selectedDate || ""}
-        selectedHour={selectedHour || ""}
-        onBookingSuccess={handleBookingSuccess}
-      />
+
+      <div className="calendar-legend">
+        <div className="legend-item">
+          <span className="legend-color available"></span>
+          <span>Disponible</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-color occupied"></span>
+          <span>Ocupado</span>
+        </div>
+      </div>
     </div>
   );
 }

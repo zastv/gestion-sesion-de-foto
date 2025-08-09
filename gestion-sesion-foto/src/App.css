@@ -361,3 +361,80 @@
     display: none;
   }
 }
+
+/* Home page styles */
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.hero-section {
+  text-align: center;
+  padding: 60px 20px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border-radius: 16px;
+  margin-bottom: 40px;
+}
+
+.hero-content h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.hero-content p {
+  font-size: 1.25rem;
+  opacity: 0.9;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.section-container {
+  margin-bottom: 60px;
+}
+
+.section-container h2 {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+}
+
+.section-container p {
+  text-align: center;
+  color: #6b7280;
+  font-size: 1.1rem;
+  margin-bottom: 40px;
+}
+
+.calendar-section {
+  margin-bottom: 60px;
+}
+
+.packages-section {
+  background: #f9fafb;
+  padding: 60px 40px;
+  border-radius: 16px;
+  margin-bottom: 60px;
+}
+
+.gallery-section {
+  margin-bottom: 60px;
+}
+
+@media (max-width: 768px) {
+  .hero-content h1 {
+    font-size: 2rem;
+  }
+  
+  .hero-content p {
+    font-size: 1rem;
+  }
+  
+  .packages-section {
+    padding: 40px 20px;
+  }
+}
