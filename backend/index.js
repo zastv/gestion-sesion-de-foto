@@ -363,6 +363,35 @@ app.get('/api/sessions/occupied-slots', async (req, res) => {
   }
 });
 
+// ENDPOINT TEMPORAL PARA CREAR SESIONES DE PRUEBA
+app.post('/api/sessions/create-test', async (req, res) => {
+  try {
+    console.log('🧪 Creating test session...');
+    
+    // Crear una sesión para mañana a las 10:00
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    
+    const result = await dbQuery(`
+      INSERT INTO "Session" (title, date, duration_minutes, userId)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [
+      'Sesión de Prueba',
+      tomorrow,
+      90,
+      1 // ID de usuario temporal
+    ]);
+    
+    console.log('✅ Test session created:', result.rows[0]);
+    res.json({ success: true, session: result.rows[0] });
+  } catch (error) {
+    console.error('❌ Error creating test session:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
 // Endpoint para cancelar una sesión
 app.put('/api/sessions/:id/cancel', authenticateJWT, async (req, res) => {
   try {
